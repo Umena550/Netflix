@@ -1,8 +1,7 @@
 import { useState } from "react";
 
-const NetflixLogo = () => (
-  <img src="/netflix-logo.png" alt="Netflix" style={{ height: "45px" }} />
-);
+import netflixLogo from "./netflix-logo.png";
+const NetflixLogo = () => <img src={netflixLogo} alt="Netflix" width="120" />;
 
 export default function LoginPage({ onLogin, onBack, prefillEmail = "" }) {
   const [isSignUp, setIsSignUp] = useState(false);

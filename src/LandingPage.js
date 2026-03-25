@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MOVIES, TMDB_API_KEY, TMDB_IMG, TMDB_BG } from "./data";
-
-const NetflixLogo = () => (
-  <img src="/netflix-logo.png" alt="Netflix" style={{ height: "45px" }} />
-);
+import netflixLogo from "./netflix-logo.png";
+const NetflixLogo = () => <img src={netflixLogo} alt="Netflix" width="120" />;
 
 // Gradient fallback posters for the collage (shown while real images load)
 const FALLBACK_POSTERS = [
