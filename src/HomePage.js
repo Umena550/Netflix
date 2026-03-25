@@ -1,0 +1,842 @@
+import { useState, useEffect, useRef } from 'react';
+import { DEFAULT_HERO, CATEGORIES, HERO_SLIDES } from './data';
+import { useTMDBPosters } from './useTMDB';
+import VideoPlayer from './VideoPlayer';
+
+const NetflixLogo = () => (
+  <svg width="100" height="27" viewBox="0 0 111 30" fill="none">
+    <path d="M105.062 14.28L111 30c-1.961-.537-3.945-1.049-5.937-1.537L99.698 17.8l-5.345 10.255c-1.969-.471-3.937-.898-5.914-1.29L95 14.28 89.362 0h5.603l4.718 11.47L104.726 0H111l-5.938 14.28zM80.112 0v27.855c1.973.167 3.946.378 5.937.629V0h-5.937zM64.998 0v26.306a180.12 180.12 0 0 1 5.937.453V0h-5.937zM50 0v25.518a171.06 171.06 0 0 1 5.937.303V0H50zm-14.937 0v24.777c1.986.085 3.969.192 5.951.322V0H35.063zM20.126 0v24.032c1.983.036 3.967.106 5.937.2V0h-5.937zM0 0v30c1.961-.002 3.937.04 5.937.12V0H0z" fill="#E50914"/>
+  </svg>
+);
+
+const I = {
+  Play:   () => <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>,
+  Info:   () => <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>,
+  Plus:   () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>,
+  Check:  () => <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>,
+  Thumb:  () => <svg viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>,
+  Search: () => <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>,
+  Bell:   () => <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>,
+  ChevR:  () => <svg viewBox="0 0 24 24" fill="currentColor" width="34" height="34"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>,
+  ChevL:  () => <svg viewBox="0 0 24 24" fill="currentColor" width="34" height="34"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>,
+  Close:  () => <svg viewBox="0 0 24 24" fill="currentColor" width="26" height="26"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>,
+  Vol:    () => <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>,
+  Mute:   () => <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>,
+};
+
+/* ─────────────────────────────────────────
+   MOVIE POSTER CARD
+   Shows real TMDB poster image.
+   Falls back to gradient if image not ready.
+───────────────────────────────────────── */
+function MoviePoster({ movie, h = 240 }) {
+  const [err, setErr] = useState(false);
+
+  return (
+    <div style={{ width: '100%', height: h, borderRadius: 6, overflow: 'hidden', position: 'relative', background: movie.gradient }}>
+      {/* Real poster image — shown as soon as thumb is available */}
+      {movie.thumb && !err && (
+        <img
+          src={movie.thumb}
+          alt={movie.title}
+          onError={() => setErr(true)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      )}
+
+      {/* Gradient fallback title (shown while loading or on error) */}
+      {(!movie.thumb || err) && (
+        <>
+          <div style={{ position: 'absolute', top: 8, left: 8, opacity: 0.8 }}>
+            <svg viewBox="0 0 111 30" fill="none" width="28"><path d="M0 0v30c2-.002 4 .04 6 .12V0H0z" fill="#E50914"/></svg>
+          </div>
+          <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 4, padding: '4px 8px', fontSize: 11, fontWeight: 800, color: 'white', textAlign: 'center', backdropFilter: 'blur(4px)' }}>
+            {movie.title}
+          </div>
+          {/* shimmer while loading */}
+          {!movie.thumb && !err && (
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent 25%,rgba(255,255,255,0.07) 50%,transparent 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }} />
+          )}
+        </>
+      )}
+
+      {/* Language badge */}
+      {movie.language && (
+        <div style={{ position: 'absolute', top: 6, right: 6, fontSize: 9, fontWeight: 800, background: 'rgba(0,0,0,0.8)', padding: '2px 5px', borderRadius: 3, color: '#eee', letterSpacing: 0.5, zIndex: 2 }}>
+          {movie.language.split('/')[0].toUpperCase()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   HERO BACKGROUND
+   Uses real TMDB backdrop (wide cinematic image).
+   Falls back to heroGradient.
+───────────────────────────────────────── */
+function HeroBanner({ movie }) {
+  const [bgErr, setBgErr] = useState(false);
+  const hasBackdrop = movie.backdrop && !bgErr;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: movie.heroGradient || movie.gradient }}>
+      {hasBackdrop && (
+        <img
+          key={movie.backdrop}                      // re-mount on change
+          src={movie.backdrop}
+          alt=""
+          onError={() => setBgErr(true)}
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center top',
+            display: 'block',
+          }}
+        />
+      )}
+      {/* Dark gradients over the backdrop so text is readable */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.1) 100%)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #141414 0%, rgba(20,20,20,0.2) 30%, transparent 100%)' }} />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   MOVIE CARD (smooth hover — reduced scale)
+───────────────────────────────────────── */
+function MovieCard({ movie, onSetHero, onPlay, onToggleList, inList }) {
+  const [hovered, setHovered] = useState(false);
+  const timerRef = useRef(null);
+
+  // Debounce hover to avoid flickering during fast mouse movement
+  const handleEnter = () => {
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setHovered(true), 120);
+  };
+  const handleLeave = () => {
+    clearTimeout(timerRef.current);
+    setHovered(false);
+  };
+
+  const handleClick = () => {
+    onSetHero(movie);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      style={{
+        flexShrink: 0, width: 155, cursor: 'pointer',
+        /* Use transformOrigin center so scale doesn't shift neighbours.
+           The row has overflowY:visible + fixed paddingBottom so the
+           expanded card floats above without pushing siblings. */
+        transform: hovered ? 'scale(1.07)' : 'scale(1)',
+        transformOrigin: 'center center',
+        transition: 'transform 0.25s ease',
+        zIndex: hovered ? 30 : 1,
+        position: 'relative',
+      }}
+    >
+      <div style={{
+        borderRadius: 6, overflow: 'hidden',
+        boxShadow: hovered ? '0 10px 30px rgba(0,0,0,0.85)' : '0 2px 8px rgba(0,0,0,0.45)',
+        transition: 'box-shadow 0.25s ease',
+      }}>
+        <div onClick={handleClick}>
+          <MoviePoster movie={movie} />
+        </div>
+
+        {/* Info panel — slides in smoothly */}
+        <div style={{
+          background: '#181818',
+          maxHeight: hovered ? 84 : 0,
+          opacity: hovered ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.28s ease, opacity 0.22s ease',
+          borderRadius: '0 0 6px 6px',
+        }}>
+          <div style={{ padding: '10px 11px' }}>
+            <div style={{ display: 'flex', gap: 5, marginBottom: 7 }}>
+              <button onClick={(e) => { e.stopPropagation(); onPlay(movie); }} style={iconBtn('white', 'black')} title="Play"><I.Play /></button>
+              <button onClick={(e) => { e.stopPropagation(); onToggleList(movie); }} style={iconBtn('transparent', inList ? '#46d369' : 'white', inList ? '#46d369' : '#aaa')} title="My List">
+                {inList ? <I.Check /> : <I.Plus />}
+              </button>
+              <button style={iconBtn('transparent', 'white', '#aaa')} title="Rate"><I.Thumb /></button>
+              <button onClick={(e) => { e.stopPropagation(); handleClick(); }} style={{ ...iconBtn('transparent', 'white', '#aaa'), marginLeft: 'auto' }} title="More Info"><I.Info /></button>
+            </div>
+            <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+              <span style={{ color: '#46d369', fontSize: 11, fontWeight: 700 }}>{movie.match}%</span>
+              <span style={{ color: '#aaa', fontSize: 10, border: '1px solid #444', padding: '1px 4px', borderRadius: 2 }}>{movie.rating}</span>
+              <span style={{ color: '#ccc', fontSize: 10, marginLeft: 2 }}>{movie.genre?.split('·')[0]?.trim()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const iconBtn = (bg, color, border) => ({
+  background: bg === 'white' ? 'white' : 'transparent',
+  border: border ? `2px solid ${border}` : 'none',
+  borderRadius: '50%', width: 32, height: 32,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  cursor: 'pointer', color, flexShrink: 0,
+});
+
+/* ─────────────────────────────────────────
+   SCROLLABLE ROW
+───────────────────────────────────────── */
+const CARD_WIDTH = 155 + 8; // card width + gap
+
+function Row({ label, movies, onSetHero, onPlay, myList, onToggleList }) {
+  const ref = useRef(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const updateArrows = () => {
+    const el = ref.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    updateArrows();
+    el.addEventListener('scroll', updateArrows, { passive: true });
+    return () => el.removeEventListener('scroll', updateArrows);
+  }, [movies]);
+
+  const scroll = (dir) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * CARD_WIDTH * 3, behavior: 'smooth' });
+  };
+
+  return (
+    <div style={{ marginBottom: 36 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 10px', paddingLeft: 50, color: '#e5e5e5' }}>{label}</h2>
+      <div style={{ position: 'relative', overflowY: 'visible' }}>
+        {canLeft && (
+          <button onClick={() => scroll(-1)} style={arrowBtn('left')}><I.ChevL /></button>
+        )}
+        <div
+          ref={ref}
+          style={{
+            display: 'flex', gap: 8, overflowX: 'auto', overflowY: 'visible',
+            paddingLeft: 50, paddingRight: 50,
+            paddingTop: 20, paddingBottom: 20,
+            scrollbarWidth: 'none', msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {movies.map(m => (
+            <MovieCard
+              key={m.id}
+              movie={m}
+              onSetHero={onSetHero}
+              onPlay={onPlay}
+              inList={myList ? myList.some(x => x.id === m.id) : false}
+              onToggleList={onToggleList}
+            />
+          ))}
+        </div>
+        {canRight && (
+          <button onClick={() => scroll(1)} style={arrowBtn('right')}><I.ChevR /></button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const arrowBtn = (side) => ({
+  position: 'absolute', [side]: 0, top: 0, bottom: 0, zIndex: 15,
+  background: 'rgba(20,20,20,0.85)', border: 'none', color: 'white', cursor: 'pointer',
+  width: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  borderRadius: side === 'left' ? '4px 0 0 4px' : '0 4px 4px 0',
+  transition: 'background 0.2s',
+});
+
+/* ─────────────────────────────────────────
+   BUY PLAN MODAL
+───────────────────────────────────────── */
+function PlanModal({ onClose }) {
+  const [selected, setSelected] = useState('monthly');
+
+  const plans = {
+    monthly: { label: 'Monthly', price: '₹649', per: '/month', save: null,  badge: null },
+    yearly:  { label: 'Yearly',  price: '₹4,999', per: '/year', save: 'Save ₹2,789', badge: 'BEST VALUE' },
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 3000,
+        background: 'rgba(0,0,0,0.88)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(6px)',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(145deg,#1a1a1a,#111)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16, padding: '40px 36px',
+          width: '100%', maxWidth: 480,
+          boxShadow: '0 40px 100px rgba(0,0,0,0.95)',
+          position: 'relative',
+        }}
+      >
+        {/* Close */}
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 18, background: 'none', border: 'none', color: '#aaa', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 13, letterSpacing: 3, color: '#e50914', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>Unlimited Access</div>
+          <h2 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: 0 }}>Choose Your Plan</h2>
+          <p style={{ color: '#aaa', fontSize: 14, marginTop: 8 }}>Watch anywhere. Cancel anytime.</p>
+        </div>
+
+        {/* Plan cards */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 28 }}>
+          {Object.entries(plans).map(([key, plan]) => (
+            <div
+              key={key}
+              onClick={() => setSelected(key)}
+              style={{
+                flex: 1, padding: '20px 16px', borderRadius: 12, cursor: 'pointer', position: 'relative',
+                border: selected === key ? '2px solid #e50914' : '2px solid rgba(255,255,255,0.12)',
+                background: selected === key ? 'rgba(229,9,20,0.1)' : 'rgba(255,255,255,0.04)',
+                transition: 'all 0.2s ease', textAlign: 'center',
+              }}
+            >
+              {plan.badge && (
+                <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: '#e50914', color: 'white', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 20, letterSpacing: 1, whiteSpace: 'nowrap' }}>
+                  {plan.badge}
+                </div>
+              )}
+              {/* Radio */}
+              <div style={{ width: 18, height: 18, borderRadius: '50%', border: selected === key ? '5px solid #e50914' : '2px solid #555', margin: '0 auto 12px', transition: 'all 0.2s' }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#ccc', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{plan.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: 'white', lineHeight: 1 }}>{plan.price}</div>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: plan.save ? 6 : 0 }}>{plan.per}</div>
+              {plan.save && <div style={{ fontSize: 12, color: '#46d369', fontWeight: 700 }}>{plan.save}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* Features */}
+        <div style={{ marginBottom: 28 }}>
+          {['Unlimited movies & TV shows', 'Watch on 4 devices at once', 'Download to watch offline', 'Cancel anytime — no commitment'].map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+              <span style={{ color: '#46d369', fontSize: 16, flexShrink: 0 }}>✓</span>
+              <span style={{ color: '#ccc', fontSize: 13 }}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={onClose}
+          style={{
+            width: '100%', background: '#e50914', border: 'none', borderRadius: 8,
+            color: 'white', fontSize: 17, fontWeight: 800, padding: '16px',
+            cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 4px 20px rgba(229,9,20,0.4)',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#f40612'}
+          onMouseLeave={e => e.currentTarget.style.background = '#e50914'}
+        >
+          Get {plans[selected].label} Plan — {plans[selected].price}
+        </button>
+        <p style={{ textAlign: 'center', color: '#666', fontSize: 11, marginTop: 12 }}>
+          Taxes may apply. By continuing you agree to our Terms of Use.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
+   MAIN HOME PAGE
+───────────────────────────────────────── */
+export default function HomePage({ user, onLogout }) {
+  const { movies, loading } = useTMDBPosters();
+
+  // heroId tracks WHICH movie is shown in the hero
+  const [heroId, setHeroId] = useState(DEFAULT_HERO.id);
+  const [heroKey, setHeroKey] = useState(0);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [playing, setPlaying] = useState(null);
+  const [heroPlaying, setHeroPlaying] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [showPlan, setShowPlan] = useState(false);
+  const [activeNav, setActiveNav] = useState('Home');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [myList, setMyList] = useState([]);
+
+  const toggleList = (movie) => {
+    setMyList(prev =>
+      prev.some(m => m.id === movie.id)
+        ? prev.filter(m => m.id !== movie.id)
+        : [...prev, movie]
+    );
+  };
+
+  // Always get the hero from the enriched movies list (so it has backdrop/thumb)
+  const heroSlides = HERO_SLIDES.map(s => movies.find(m => m.id === s.id) || s);
+  const hero = heroId !== DEFAULT_HERO.id
+    ? (movies.find(m => m.id === heroId) || movies[0] || DEFAULT_HERO)
+    : (heroSlides[heroSlideIndex] || movies[0] || DEFAULT_HERO);
+
+  // Auto-slide hero every 7 seconds (only when user hasn't manually selected)
+  const [userSelectedHero, setUserSelectedHero] = useState(false);
+  useEffect(() => {
+    if (userSelectedHero) return;
+    const timer = setInterval(() => {
+      setHeroSlideIndex(prev => {
+        const next = (prev + 1) % heroSlides.length;
+        setHeroKey(k => k + 1);
+        return next;
+      });
+    }, 7000);
+    return () => clearInterval(timer);
+  }, [userSelectedHero, heroSlides.length]);
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', fn);
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
+
+  // Detect when YouTube promo finishes → revert to poster automatically
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data?.event === 'onStateChange' && data?.info === 0) {
+          setHeroPlaying(false);
+        }
+      } catch {}
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Timed fallback: most trailers are 2–3 min; after 210s force back to poster
+  useEffect(() => {
+    if (!heroPlaying) return;
+    const t = setTimeout(() => setHeroPlaying(false), 210000);
+    return () => clearTimeout(t);
+  }, [heroPlaying]);
+
+  useEffect(() => {
+    document.body.style.overflow = playing ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [playing]);
+
+  const trailerTimerRef = useRef(null);
+
+  const handleSetHero = (movie) => {
+    setHeroId(movie.id);
+    setHeroKey(k => k + 1);
+    setUserSelectedHero(true);
+    setHeroPlaying(false);
+
+    // Auto-play trailer after 5 seconds
+    clearTimeout(trailerTimerRef.current);
+    trailerTimerRef.current = setTimeout(() => {
+      setHeroPlaying(true);
+    }, 5000);
+  };
+
+  // Clean up timer on unmount
+  useEffect(() => () => clearTimeout(trailerTimerRef.current), []);
+
+  const searchResults = searchQ.length > 1
+    ? movies.filter(m =>
+        m.title.toLowerCase().includes(searchQ.toLowerCase()) ||
+        m.genre.toLowerCase().includes(searchQ.toLowerCase()) ||
+        (m.language || '').toLowerCase().includes(searchQ.toLowerCase())
+      )
+    : [];
+
+  const byCategory = (cat) => movies.filter(m => m.category === cat);
+  const navItems = ['Home', 'TV Shows', 'Movies', 'New & Popular', 'My List'];
+
+  return (
+    <div style={{ background: '#141414', minHeight: '100vh', color: 'white', overflowX: 'hidden', fontFamily: "'Montserrat', sans-serif" }}>
+      <style>{`
+        @keyframes heroFadeIn { from { opacity:0; transform:scale(1.04); } to { opacity:1; transform:scale(1); } }
+        @keyframes shimmer    { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        input::placeholder { color:#888; }
+        div::-webkit-scrollbar { display: none; }
+      `}</style>
+
+      {/* Loading bar */}
+      {loading && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 3, zIndex: 9999, background: '#e50914', animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' }} />
+      )}
+
+      {/* ── NAVBAR ── */}
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, height: 68,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 50px',
+        background: scrolled ? 'rgba(20,20,20,0.97)' : 'linear-gradient(to bottom,rgba(0,0,0,0.85) 0%,transparent)',
+        transition: 'background 0.4s', backdropFilter: scrolled ? 'blur(6px)' : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+          <NetflixLogo />
+          <div style={{ display: 'flex', gap: 18 }}>
+            {navItems.map(item => (
+              <button key={item} onClick={() => setActiveNav(item)} style={{ background: 'none', border: 'none', color: activeNav === item ? 'white' : '#ccc', fontSize: 14, cursor: 'pointer', fontWeight: activeNav === item ? 700 : 400, fontFamily: 'inherit' }}>
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          {searchOpen ? (
+            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.85)', border: '1px solid rgba(255,255,255,0.5)', padding: '5px 12px', borderRadius: 2, gap: 8 }}>
+              <I.Search />
+              <input autoFocus value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Titles, genres..."
+                style={{ background: 'none', border: 'none', color: 'white', outline: 'none', fontSize: 14, width: 200, fontFamily: 'inherit' }} />
+              <button onClick={() => { setSearchOpen(false); setSearchQ(''); }} style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: 20 }}>×</button>
+            </div>
+          ) : (
+            <button onClick={() => setSearchOpen(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><I.Search /></button>
+          )}
+          <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><I.Bell /></button>
+          <div style={{ position: 'relative' }}>
+            <div onClick={() => setProfileOpen(!profileOpen)}
+              style={{ width: 34, height: 34, borderRadius: 4, background: '#e87c03', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, userSelect: 'none' }}>
+              {(user?.name?.[0] || 'U').toUpperCase()}
+            </div>
+            {profileOpen && (
+              <div style={{ position: 'absolute', right: 0, top: 44, background: '#141414', border: '1px solid #2a2a2a', borderRadius: 4, minWidth: 180, boxShadow: '0 8px 40px rgba(0,0,0,0.9)', overflow: 'hidden', zIndex: 300 }}>
+                <div style={{ padding: '14px 16px', borderBottom: '1px solid #2a2a2a', fontSize: 13, color: '#ccc' }}>
+                  Hi, <strong style={{ color: 'white' }}>{user?.name}</strong>
+                </div>
+                {['Manage Profiles', 'Account', 'Help Center'].map(item => (
+                  <div key={item} style={{ padding: '10px 16px', fontSize: 13, color: '#e5e5e5', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#222'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    {item}
+                  </div>
+                ))}
+                <div style={{ padding: '10px 16px', fontSize: 13, color: '#e5e5e5', cursor: 'pointer', borderTop: '1px solid #2a2a2a' }}
+                  onClick={onLogout}
+                  onMouseEnter={e => e.currentTarget.style.background = '#222'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  Sign out of Netflix
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* ── SEARCH OVERLAY ── */}
+      {searchQ.length > 1 && (
+        <div style={{ position: 'fixed', top: 68, left: 0, right: 0, bottom: 0, background: '#141414', zIndex: 150, padding: '40px 50px', overflowY: 'auto' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: '#ccc' }}>
+            {searchResults.length > 0 ? `${searchResults.length} results for "${searchQ}"` : `No results for "${searchQ}"`}
+          </h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {searchResults.map(m => (
+              <div key={m.id} onClick={() => { handleSetHero(m); setSearchQ(''); setSearchOpen(false); }}
+                style={{ width: 160, cursor: 'pointer', borderRadius: 6, overflow: 'hidden' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                <MoviePoster movie={m} h={240} />
+                <div style={{ background: '#1a1a1a', padding: '8px 12px' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.title}</div>
+                  <div style={{ color: '#aaa', fontSize: 11, marginTop: 2 }}>{m.language}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── HERO BANNER ── */}
+      <div key={heroKey} style={{ position: 'relative', height: '100vh', minHeight: 580, overflow: 'hidden', animation: 'heroFadeIn 0.5s ease' }}>
+
+        {/* Backdrop / promo background — always present */}
+        <HeroBanner movie={hero} />
+
+        {/* Inline promo iframe — plays muted in background, hidden when heroPlaying=false */}
+        {hero.videoId && (
+          <iframe
+            key={hero.videoId + '-promo'}
+            src={heroPlaying
+              ? `https://www.youtube.com/embed/${hero.videoId}?autoplay=1&controls=1&rel=0&modestbranding=1&mute=${muted ? 1 : 0}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
+              : `https://www.youtube.com/embed/${hero.videoId}?autoplay=0&controls=0&mute=1`
+            }
+            title={hero.title + ' promo'}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              border: 'none',
+              zIndex: heroPlaying ? 3 : -1,
+              opacity: heroPlaying ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+              // Scale up so YouTube letterbox bars are hidden
+              transform: 'scale(1.18)',
+            }}
+          />
+        )}
+
+        {/* Dark gradients always sit on top of the video so text is readable — HARD RULE */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 0, background: heroPlaying
+            ? 'linear-gradient(to right, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 55%, transparent 100%)'
+            : 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.1) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, #141414 0%, rgba(20,20,20,0.2) 30%, transparent 100%)' }} />
+        </div>
+
+        {/* Language + match info — always visible */}
+        <div style={{ position: 'absolute', top: 88, left: 50, display: 'flex', alignItems: 'center', gap: 10, zIndex: 5 }}>
+          <div style={{ width: 4, height: 32, background: hero.accentColor || '#e50914', borderRadius: 2, boxShadow: `0 0 12px ${hero.accentColor || '#e50914'}` }} />
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: 3, color: hero.accentColor || '#e50914', fontWeight: 700, textTransform: 'uppercase' }}>
+              {hero.language} · Original
+            </div>
+            <div style={{ fontSize: 11, color: '#bbb', letterSpacing: 1 }}>{hero.match}% Match · {hero.year}</div>
+          </div>
+        </div>
+
+        {/* Hero content — always visible, HARD RULE: title never removed during promo */}
+        <div style={{ position: 'absolute', bottom: '26%', left: 50, maxWidth: 560, zIndex: 5 }}>
+          <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end', marginBottom: 18 }}>
+            {hero.thumb && (
+              <img src={hero.thumb} alt={hero.title}
+                style={{
+                  width: 100, height: 148, objectFit: 'cover', borderRadius: 6, flexShrink: 0,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.8)', border: '2px solid rgba(255,255,255,0.15)',
+                  opacity: heroPlaying ? 0.55 : 1,
+                  transition: 'opacity 0.5s ease',
+                }} />
+            )}
+            <div>
+              <h1 style={{ fontSize: 'clamp(36px,5.5vw,68px)', fontWeight: 900, lineHeight: 0.95, marginBottom: 12, letterSpacing: -1.5, textShadow: '2px 4px 20px rgba(0,0,0,0.9)' }}>
+                {hero.title}
+              </h1>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(hero.tags || []).map(t => (
+                  <span key={t} style={{ fontSize: 12, color: '#ddd', background: 'rgba(255,255,255,0.14)', padding: '4px 12px', borderRadius: 20, backdropFilter: 'blur(4px)' }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <p style={{
+            color: '#e0e0e0', fontSize: 15, lineHeight: 1.7, marginBottom: 26,
+            textShadow: '1px 2px 8px rgba(0,0,0,0.9)', maxWidth: 480,
+            opacity: heroPlaying ? 0 : 1,
+            maxHeight: heroPlaying ? 0 : 80,
+            overflow: 'hidden',
+            transition: 'opacity 0.4s ease, max-height 0.4s ease',
+          }}>
+            {hero.description}
+          </p>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {/* Play button → opens Buy Plan modal */}
+            <button
+              onClick={() => setShowPlan(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'white', color: 'black', border: 'none', borderRadius: 4, padding: '13px 30px', fontSize: 18, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#e5e5e5'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+              <I.Play /> Play
+            </button>
+
+            {/* Promo toggle button */}
+            <button
+              onClick={() => setHeroPlaying(p => !p)}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, background: 'rgba(109,109,110,0.6)', color: 'white', border: 'none', borderRadius: 4, padding: '13px 24px', fontSize: 16, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', backdropFilter: 'blur(4px)' }}>
+              {heroPlaying ? '⏹ Stop Promo' : '▶ Watch Promo'}
+            </button>
+          </div>
+        </div>
+
+        {/* Mute + Rating */}
+        <div style={{ position: 'absolute', right: 50, bottom: '29%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12, zIndex: 5 }}>
+          {heroPlaying && (
+            <button onClick={() => setMuted(!muted)} style={{ background: 'transparent', border: '2px solid #bbb', borderRadius: '50%', width: 42, height: 42, color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {muted ? <I.Mute /> : <I.Vol />}
+            </button>
+          )}
+          <div style={{ background: 'rgba(0,0,0,0.6)', borderLeft: '4px solid #bbb', padding: '4px 12px', fontSize: 13, color: '#ccc' }}>
+            {hero.rating}
+          </div>
+        </div>
+
+        {/* Slide navigation dots + arrows */}
+        {!userSelectedHero && (
+          <div style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: 10, zIndex: 10 }}>
+            <button
+              onClick={() => { setHeroSlideIndex(i => { const n = (i - 1 + heroSlides.length) % heroSlides.length; setHeroKey(k=>k+1); return n; }); setHeroPlaying(false); }}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <I.ChevL />
+            </button>
+            {heroSlides.map((_, i) => (
+              <button key={i} onClick={() => { setHeroSlideIndex(i); setHeroKey(k=>k+1); setHeroPlaying(false); }}
+                style={{ width: i === heroSlideIndex ? 28 : 8, height: 4, borderRadius: 3, border: 'none', cursor: 'pointer', background: i === heroSlideIndex ? 'white' : 'rgba(255,255,255,0.4)', transition: 'all 0.3s ease', padding: 0 }} />
+            ))}
+            <button
+              onClick={() => { setHeroSlideIndex(i => { const n = (i + 1) % heroSlides.length; setHeroKey(k=>k+1); return n; }); setHeroPlaying(false); }}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <I.ChevR />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── MOVIE ROWS ── */}
+      <div style={{ position: 'relative', zIndex: 10, marginTop: -100, paddingBottom: 60 }}>
+
+        {/* HOME — all category rows */}
+        {activeNav === 'Home' && (
+          <>
+            {Object.entries(CATEGORIES).map(([key, { label }]) => (
+              <Row key={key} label={label} movies={byCategory(key)}
+                onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+                myList={myList} onToggleList={toggleList} />
+            ))}
+            <Row label="🎯 Continue Watching" movies={[...byCategory('family')].reverse()}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+          </>
+        )}
+
+        {/* TV SHOWS */}
+        {activeNav === 'TV Shows' && (
+          <>
+            <div style={{ paddingTop: 30, paddingLeft: 50, paddingBottom: 10 }}>
+              <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 4 }}>TV Shows</h1>
+              <p style={{ color: '#aaa', fontSize: 14 }}>Series, episodes and more</p>
+            </div>
+            <Row label="📺 Popular TV Shows" movies={byCategory('tvshows')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🔥 Trending Series" movies={byCategory('trending')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="✨ New Episodes" movies={byCategory('new').filter(m => m.duration?.includes('Season'))}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🌏 International Series" movies={byCategory('world').filter(m => m.tmdbType === 'tv' || m.duration?.includes('Season'))}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+          </>
+        )}
+
+        {/* MOVIES */}
+        {activeNav === 'Movies' && (
+          <>
+            <div style={{ paddingTop: 30, paddingLeft: 50, paddingBottom: 10 }}>
+              <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 4 }}>Movies</h1>
+              <p style={{ color: '#aaa', fontSize: 14 }}>Films, blockbusters and cinema</p>
+            </div>
+            <Row label="🏆 Blockbuster Hits" movies={byCategory('hits')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🎉 Action & Family Films" movies={byCategory('family')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🌏 World Cinema" movies={byCategory('world').filter(m => m.tmdbType === 'movie' || m.duration?.includes('h'))}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="✨ New Movies" movies={byCategory('new').filter(m => m.duration?.includes('h') || m.tmdbType === 'movie')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+          </>
+        )}
+
+        {/* NEW & POPULAR */}
+        {activeNav === 'New & Popular' && (
+          <>
+            <div style={{ paddingTop: 30, paddingLeft: 50, paddingBottom: 10 }}>
+              <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 4 }}>New & Popular</h1>
+              <p style={{ color: '#aaa', fontSize: 14 }}>Fresh releases and trending now</p>
+            </div>
+            <Row label="✨ New on Netflix" movies={byCategory('new')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🔥 Trending Now" movies={byCategory('trending')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+            <Row label="🏆 All-Time Hits" movies={byCategory('hits')}
+              onSetHero={handleSetHero} onPlay={() => setShowPlan(true)}
+              myList={myList} onToggleList={toggleList} />
+          </>
+        )}
+
+        {/* MY LIST */}
+        {activeNav === 'My List' && (
+          <div style={{ paddingTop: 30, paddingLeft: 50, paddingRight: 50, paddingBottom: 60 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 900, marginBottom: 4 }}>My List</h1>
+            <p style={{ color: '#aaa', fontSize: 14, marginBottom: 32 }}>Movies and shows you've saved</p>
+            {myList.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 20 }}>
+                <div style={{ fontSize: 64 }}>📋</div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e5e5e5' }}>Your list is empty</h2>
+                <p style={{ color: '#aaa', fontSize: 15, textAlign: 'center', maxWidth: 400 }}>
+                  Browse movies and shows, then click the <strong style={{ color: 'white' }}>+ button</strong> on any card to add it here.
+                </p>
+                <button
+                  onClick={() => setActiveNav('Home')}
+                  style={{ background: 'white', color: 'black', border: 'none', borderRadius: 4, padding: '12px 28px', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8 }}>
+                  Browse Content
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {myList.map(m => (
+                  <MovieCard
+                    key={m.id}
+                    movie={m}
+                    onSetHero={handleSetHero}
+                    onPlay={() => setShowPlan(true)}
+                    inList={true}
+                    onToggleList={toggleList}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ padding: '48px 50px 36px', borderTop: '1px solid #2a2a2a', color: '#757575' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,auto)', gap: '8px 30px', marginBottom: 24, width: 'fit-content' }}>
+          {['Help Center', 'Gift Cards', 'Media Center', 'Investor Relations', 'Jobs', 'Terms of Use', 'Privacy', 'Cookie Preferences', 'Legal Notices', 'Contact Us', 'FAQ', 'Corporate Info'].map(item => (
+            <span key={item} style={{ fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}>{item}</span>
+          ))}
+        </div>
+        <p style={{ fontSize: 13 }}>© 1997–2024 Netflix, Inc. · UI Clone for demonstration purposes only.</p>
+      </footer>
+
+      {/* ── PLAN MODAL ── */}
+      {showPlan && <PlanModal onClose={() => setShowPlan(false)} />}
+
+      {/* ── VIDEO PLAYER (legacy, kept for promo fallback) ── */}
+      {playing && <VideoPlayer movie={playing} onClose={() => setPlaying(null)} />}
+    </div>
+  );
+}
